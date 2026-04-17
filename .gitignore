@@ -1,0 +1,5 @@
+.env
+workspace/
+instances/*/.env
+instances/*/workspace/
+instances/*/docker-compose.yml

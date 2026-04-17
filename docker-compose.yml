@@ -1,0 +1,17 @@
+services:
+  openclaw:
+    build:
+      context: .
+      args:
+        INSTALL_SDKMAN: 1
+        EXTRA_APT_PACKAGES: "git"
+    env_file:
+      - .env
+    ports:
+      - "18789:18789"
+    volumes:
+      - ./persistent/openclaw-home:/root/.openclaw
+      - ./persistent/workspace:/workspace
+      # Optional: mount host SSH material read-only when OPENCLAW_SSH_MODE=host
+      # - ${HOME}/.ssh:/ssh-host:ro
+    restart: unless-stopped

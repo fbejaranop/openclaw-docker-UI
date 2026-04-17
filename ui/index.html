@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OpenClaw Container Launcher</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      font-family: Inter, system-ui, sans-serif;
+      margin: 0;
+      background: #0b1020;
+      color: #e8ecf3;
+    }
+    .wrap {
+      max-width: 980px;
+      margin: 32px auto;
+      padding: 0 20px 40px;
+    }
+    h1 { margin-bottom: 8px; }
+    p { color: #aab4c4; }
+    form, .panel {
+      background: #131a2e;
+      border: 1px solid #24304d;
+      border-radius: 16px;
+      padding: 20px;
+      margin-top: 18px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+    }
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 14px;
+    }
+    input, select {
+      border: 1px solid #324364;
+      background: #0d1324;
+      color: #f7f9fc;
+      border-radius: 10px;
+      padding: 11px 12px;
+      font: inherit;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .choice-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .choice {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid #324364;
+      border-radius: 10px;
+      background: #0d1324;
+    }
+    .choice input { margin: 0; }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 16px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button.primary { background: #4f7cff; color: white; }
+    button.secondary { background: #27324f; color: #d9e2f1; }
+    button.ghost { background: transparent; border: 1px solid #324364; color: #d9e2f1; }
+    #result {
+      white-space: pre-wrap;
+      font-family: ui-monospace, monospace;
+      font-size: 13px;
+      background: #0d1324;
+      border-radius: 12px;
+      padding: 14px;
+      min-height: 100px;
+      overflow: auto;
+    }
+    .muted { color: #95a2b8; font-size: 13px; }
+    .hidden { display: none; }
+    .section-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+    .hint-box {
+      background: #0d1324;
+      border: 1px solid #324364;
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .hint-box pre {
+      margin: 10px 0 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>OpenClaw container launcher</h1>
+    <p>Choose only the providers you need, then launch a new Dockerized OpenClaw instance from this page.</p>
+
+    <form id="launcher-form">
+      <div class="grid">
+        <label>
+          Instance name
+          <input name="instanceName" placeholder="customer-a" required />
+        </label>
+        <label>
+          Host port
+          <input name="hostPort" type="number" min="1" max="65535" required />
+        </label>
+        <label>
+          Primary model
+          <input name="openclawModel" list="model-suggestions" placeholder="openai/gpt-5.4" required />
+        </label>
+        <label>
+          Thinking default
+          <select name="thinkingDefault">
+            <option>low</option>
+            <option selected>medium</option>
+            <option>high</option>
+          </select>
+        </label>
+      </div>
+
+      <datalist id="model-suggestions">
+        <option value="openai/gpt-5.4"></option>
+        <option value="openai/gpt-5.4-mini"></option>
+        <option value="anthropic/claude-sonnet-4.5"></option>
+        <option value="anthropic/claude-opus-4.1"></option>
+      </datalist>
+
+      <div class="panel stack">
+        <div>
+          <div class="section-title">Model providers</div>
+          <div class="choice-group">
+            <label class="choice">
+              <input type="checkbox" name="providerKeys" value="openai" checked />
+              OpenAI
+            </label>
+            <label class="choice">
+              <input type="checkbox" name="providerKeys" value="anthropic" />
+              Anthropic
+            </label>
+          </div>
+          <p class="muted">Only the selected providers are required and written into the generated config.</p>
+        </div>
+
+        <div class="grid">
+          <label id="openai-field">
+            OpenAI API key
+            <input name="openaiApiKey" placeholder="sk-..." />
+          </label>
+          <label id="anthropic-field">
+            Anthropic API key
+            <input name="anthropicApiKey" placeholder="sk-ant-..." />
+          </label>
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top:14px;">
+        <label>
+          Gateway token
+          <input name="gatewayToken" required />
+        </label>
+      </div>
+
+      <div class="panel stack">
+        <div>
+          <div class="section-title">Container tools</div>
+          <div class="choice-group" id="tool-checkboxes">
+            <label class="choice"><input type="checkbox" name="selectedTools" value="git" checked />Git</label>
+            <label class="choice"><input type="checkbox" name="selectedTools" value="sdkman" checked />SDKMAN</label>
+            <label class="choice"><input type="checkbox" name="selectedTools" value="jq" />jq</label>
+            <label class="choice"><input type="checkbox" name="selectedTools" value="ripgrep" />ripgrep</label>
+            <label class="choice"><input type="checkbox" name="selectedTools" value="fd" />fd</label>
+            <label class="choice"><input type="checkbox" name="selectedTools" value="vim" />vim</label>
+            <label class="choice"><input type="checkbox" name="selectedTools" value="tmux" />tmux</label>
+            <label class="choice"><input type="checkbox" name="selectedTools" value="python" />Python</label>
+            <label class="choice"><input type="checkbox" name="selectedTools" value="buildEssential" />build-essential</label>
+            <label class="choice"><input type="checkbox" name="selectedTools" value="java" />default-jdk</label>
+          </div>
+          <p class="muted">These are baked into the image when the container is created.</p>
+        </div>
+
+        <label>
+          Extra apt packages
+          <input name="extraAptPackages" placeholder="htop tree ffmpeg" />
+        </label>
+      </div>
+
+      <div class="panel stack">
+        <div>
+          <div class="section-title">SSH setup</div>
+          <div class="choice-group">
+            <label class="choice">
+              <input type="radio" name="sshMode" value="generated" checked />
+              Generate SSH keys inside the container
+            </label>
+            <label class="choice">
+              <input type="radio" name="sshMode" value="host" />
+              Copy SSH keys from the host machine
+            </label>
+          </div>
+          <p class="muted">Host mode mounts your machine SSH folder read-only and copies its files into the instance on first boot, so the container does not edit the originals.</p>
+        </div>
+
+        <label id="host-ssh-path-field" class="hidden">
+          Host SSH path
+          <input name="hostSshPath" placeholder="/home/you/.ssh" />
+        </label>
+      </div>
+
+      <div class="panel stack">
+        <div class="row">
+          <input id="slackEnabled" name="slackEnabled" type="checkbox" />
+          <label for="slackEnabled" style="display:block;">Enable Slack</label>
+        </div>
+
+        <div class="grid">
+          <label>
+            Slack profile nickname
+            <input name="slackProfileNickname" placeholder="prod-marketing" />
+          </label>
+          <label>
+            Saved Slack profiles
+            <select id="slack-profile-select">
+              <option value="">Choose a saved profile</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="row">
+          <button class="secondary" type="button" id="save-slack-profile">Save Slack profile</button>
+          <button class="ghost" type="button" id="delete-slack-profile">Delete selected profile</button>
+        </div>
+
+        <div class="grid" id="slack-fields" style="margin-top:4px;">
+          <label>
+            Slack bot token
+            <input name="slackBotToken" placeholder="xoxb-..." />
+          </label>
+          <label>
+            Slack app token
+            <input name="slackAppToken" placeholder="xapp-..." />
+          </label>
+          <label>
+            Slack allowed channel ID
+            <input name="slackAllowedChannelId" placeholder="C0123456789" />
+          </label>
+        </div>
+        <p class="muted">Slack profiles are saved in this browser with nickname, bot token, app token, and allowed channel ID.</p>
+
+        <div id="slack-manifest-panel" class="hint-box hidden">
+          <div class="section-title">Slack app manifest preview</div>
+          <div class="muted">This is generated from the instance name, so you can create the Slack app from scratch without guessing the config.</div>
+          <pre id="slack-manifest-preview"></pre>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:18px;">
+        <button class="secondary" type="button" id="regen-token">Generate token</button>
+        <button class="primary" type="submit">Create container</button>
+      </div>
+      <p class="muted">The launcher writes an instance-specific <code>.env</code> and <code>docker-compose.yml</code> in the launcher instances directory, then runs <code>docker compose up --build -d</code>.</p>
+    </form>
+
+    <div class="panel">
+      <strong>Result</strong>
+      <div id="result">Waiting...</div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('launcher-form');
+    const result = document.getElementById('result');
+    const tokenInput = form.elements.gatewayToken;
+    const providerInputs = Array.from(form.querySelectorAll('input[name="providerKeys"]'));
+    const openaiField = document.getElementById('openai-field');
+    const anthropicField = document.getElementById('anthropic-field');
+    const slackEnabled = form.elements.slackEnabled;
+    const toolInputs = Array.from(form.querySelectorAll('input[name="selectedTools"]'));
+    const sshModeInputs = Array.from(form.querySelectorAll('input[name="sshMode"]'));
+    const hostSshPathField = document.getElementById('host-ssh-path-field');
+    const slackProfileSelect = document.getElementById('slack-profile-select');
+    const slackManifestPanel = document.getElementById('slack-manifest-panel');
+    const slackManifestPreview = document.getElementById('slack-manifest-preview');
+    const STORAGE_KEY = 'openclaw-docker-slack-profiles';
+
+    function getSelectedProviders() {
+      return providerInputs.filter(input => input.checked).map(input => input.value);
+    }
+
+    function getSelectedTools() {
+      return toolInputs.filter(input => input.checked).map(input => input.value);
+    }
+
+    function syncProviderFields() {
+      const selected = new Set(getSelectedProviders());
+      openaiField.classList.toggle('hidden', !selected.has('openai'));
+      anthropicField.classList.toggle('hidden', !selected.has('anthropic'));
+      form.elements.openaiApiKey.required = selected.has('openai');
+      form.elements.anthropicApiKey.required = selected.has('anthropic');
+    }
+
+    function slackAppName(value) {
+      const parts = String(value || '').trim().match(/[A-Za-z0-9]+/g);
+      if (!parts || !parts.length) return 'OpenClaw';
+      return parts.map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('');
+    }
+
+    function buildSlackManifest(instanceName) {
+      const name = slackAppName(instanceName);
+      return {
+        display_information: {
+          name,
+          description: 'Slack connector for OpenClaw',
+          background_color: '#1f2937'
+        },
+        features: {
+          bot_user: {
+            display_name: name,
+            always_online: true
+          },
+          app_home: {
+            home_tab_enabled: true,
+            messages_tab_enabled: true,
+            messages_tab_read_only_enabled: false
+          },
+          slash_commands: [
+            {
+              command: `/${name}`,
+              description: 'Send a message to OpenClaw',
+              should_escape: false
+            }
+          ]
+        },
+        oauth_config: {
+          scopes: {
+            bot: [
+              'app_mentions:read',
+              'assistant:write',
+              'channels:history',
+              'channels:read',
+              'chat:write',
+              'commands',
+              'emoji:read',
+              'files:read',
+              'files:write',
+              'groups:history',
+              'groups:read',
+              'im:history',
+              'im:read',
+              'im:write',
+              'mpim:history',
+              'mpim:read',
+              'mpim:write',
+              'pins:read',
+              'pins:write',
+              'reactions:read',
+              'reactions:write',
+              'users:read'
+            ]
+          }
+        },
+        settings: {
+          socket_mode_enabled: true,
+          interactivity: {
+            is_enabled: true
+          },
+          event_subscriptions: {
+            bot_events: [
+              'app_mention',
+              'channel_rename',
+              'member_joined_channel',
+              'member_left_channel',
+              'message.channels',
+              'message.groups',
+              'message.im',
+              'message.mpim',
+              'pin_added',
+              'pin_removed',
+              'reaction_added',
+              'reaction_removed'
+            ]
+          },
+          org_deploy_enabled: false,
+          token_rotation_enabled: false
+        }
+      };
+    }
+
+    function getSelectedSshMode() {
+      return sshModeInputs.find(input => input.checked)?.value || 'generated';
+    }
+
+    function syncSshFields() {
+      const useHostSsh = getSelectedSshMode() === 'host';
+      hostSshPathField.classList.toggle('hidden', !useHostSsh);
+      form.elements.hostSshPath.required = useHostSsh;
+    }
+
+    function syncSlackManifestPreview() {
+      const enabled = slackEnabled.checked;
+      slackManifestPanel.classList.toggle('hidden', !enabled);
+      if (!enabled) return;
+      slackManifestPreview.textContent = JSON.stringify(buildSlackManifest(form.elements.instanceName.value), null, 2);
+    }
+
+    function loadSlackProfiles() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      } catch {
+        return [];
+      }
+    }
+
+    function saveSlackProfiles(profiles) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
+    }
+
+    function renderSlackProfiles() {
+      const profiles = loadSlackProfiles();
+      const currentValue = slackProfileSelect.value;
+      slackProfileSelect.innerHTML = '<option value="">Choose a saved profile</option>';
+      for (const profile of profiles) {
+        const option = document.createElement('option');
+        option.value = profile.nickname;
+        option.textContent = profile.nickname;
+        slackProfileSelect.appendChild(option);
+      }
+      if (profiles.some(profile => profile.nickname === currentValue)) {
+        slackProfileSelect.value = currentValue;
+      }
+    }
+
+    function applySlackProfile(nickname) {
+      const profile = loadSlackProfiles().find(item => item.nickname === nickname);
+      if (!profile) return;
+      form.elements.slackProfileNickname.value = profile.nickname;
+      form.elements.slackBotToken.value = profile.slackBotToken || '';
+      form.elements.slackAppToken.value = profile.slackAppToken || '';
+      form.elements.slackAllowedChannelId.value = profile.slackAllowedChannelId || '';
+      slackEnabled.checked = true;
+      syncSlackManifestPreview();
+    }
+
+    function persistSlackProfile() {
+      const nickname = form.elements.slackProfileNickname.value.trim();
+      if (!nickname) {
+        result.textContent = 'Set a Slack profile nickname before saving.';
+        return;
+      }
+      const profiles = loadSlackProfiles().filter(item => item.nickname !== nickname);
+      profiles.push({
+        nickname,
+        slackBotToken: form.elements.slackBotToken.value.trim(),
+        slackAppToken: form.elements.slackAppToken.value.trim(),
+        slackAllowedChannelId: form.elements.slackAllowedChannelId.value.trim(),
+      });
+      profiles.sort((a, b) => a.nickname.localeCompare(b.nickname));
+      saveSlackProfiles(profiles);
+      renderSlackProfiles();
+      slackProfileSelect.value = nickname;
+      result.textContent = `Saved Slack profile: ${nickname}`;
+    }
+
+    function removeSlackProfile() {
+      const nickname = slackProfileSelect.value || form.elements.slackProfileNickname.value.trim();
+      if (!nickname) {
+        result.textContent = 'Pick a Slack profile to delete.';
+        return;
+      }
+      const before = loadSlackProfiles();
+      const after = before.filter(item => item.nickname !== nickname);
+      saveSlackProfiles(after);
+      renderSlackProfiles();
+      if (form.elements.slackProfileNickname.value.trim() === nickname) {
+        form.elements.slackProfileNickname.value = '';
+      }
+      result.textContent = `Deleted Slack profile: ${nickname}`;
+    }
+
+    async function loadDefaults() {
+      const res = await fetch('/api/defaults');
+      const data = await res.json();
+      form.elements.openclawModel.value = data.openclawModel;
+      form.elements.thinkingDefault.value = data.thinkingDefault;
+      form.elements.hostPort.value = data.hostPort;
+      tokenInput.value = data.gatewayToken;
+      form.elements.hostSshPath.value = data.hostSshPath || '';
+      form.elements.extraAptPackages.value = data.extraAptPackages || '';
+      const selectedTools = new Set(data.selectedTools || []);
+      toolInputs.forEach(input => {
+        input.checked = selectedTools.has(input.value);
+      });
+      const sshTarget = sshModeInputs.find(input => input.value === (data.sshMode || 'generated'));
+      if (sshTarget) sshTarget.checked = true;
+      syncProviderFields();
+      syncSshFields();
+      renderSlackProfiles();
+      syncSlackManifestPreview();
+    }
+
+    async function generateToken() {
+      const res = await fetch('/api/defaults');
+      const data = await res.json();
+      tokenInput.value = data.gatewayToken;
+    }
+
+    document.getElementById('regen-token').addEventListener('click', generateToken);
+    document.getElementById('save-slack-profile').addEventListener('click', persistSlackProfile);
+    document.getElementById('delete-slack-profile').addEventListener('click', removeSlackProfile);
+    slackProfileSelect.addEventListener('change', (event) => applySlackProfile(event.target.value));
+    providerInputs.forEach(input => input.addEventListener('change', syncProviderFields));
+    sshModeInputs.forEach(input => input.addEventListener('change', syncSshFields));
+    slackEnabled.addEventListener('change', syncSlackManifestPreview);
+    form.elements.instanceName.addEventListener('input', syncSlackManifestPreview);
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const providerKeys = getSelectedProviders();
+      if (!providerKeys.length) {
+        result.textContent = 'Select at least one model provider.';
+        return;
+      }
+
+      const payload = {
+        instanceName: form.elements.instanceName.value,
+        hostPort: Number(form.elements.hostPort.value),
+        openclawModel: form.elements.openclawModel.value,
+        thinkingDefault: form.elements.thinkingDefault.value,
+        gatewayToken: form.elements.gatewayToken.value,
+        providerKeys,
+        selectedTools: getSelectedTools(),
+        extraAptPackages: form.elements.extraAptPackages.value,
+        sshMode: getSelectedSshMode(),
+        hostSshPath: form.elements.hostSshPath.value,
+        openaiApiKey: form.elements.openaiApiKey.value,
+        anthropicApiKey: form.elements.anthropicApiKey.value,
+        slackEnabled: form.elements.slackEnabled.checked,
+        slackBotToken: form.elements.slackBotToken.value,
+        slackAppToken: form.elements.slackAppToken.value,
+        slackAllowedChannelId: form.elements.slackAllowedChannelId.value,
+      };
+
+      result.textContent = 'Creating container...';
+      const res = await fetch('/api/containers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        result.textContent = JSON.stringify(data, null, 2);
+        return;
+      }
+
+      const sections = [
+        `Container ${data.instanceName} created on port ${data.hostPort}.`,
+        `Instance dir: ${data.instanceDir}`,
+        `Command: ${data.command}`,
+      ];
+
+      sections.push(
+        '',
+        `Tools: ${(data.tools?.selected || []).join(', ') || '(none selected)'}`,
+        `Apt packages: ${(data.tools?.aptPackages || []).join(', ') || '(none)'}`,
+        '',
+        `SSH mode: ${data.ssh?.mode || 'generated'}`,
+        `Host SSH path: ${data.ssh?.hostPath || '(not used)'}`
+      );
+
+      if (data.slack) {
+        sections.push(
+          '',
+          `Slack app name: ${data.slack.name}`,
+          `Slack manifest file: ${data.slack.manifestPath}`,
+          `Slack instructions file: ${data.slack.instructionsPath}`,
+          '',
+          'Slack setup instructions:',
+          data.slack.instructions,
+          '',
+          'Slack manifest JSON:',
+          JSON.stringify(data.slack.manifest, null, 2)
+        );
+      }
+
+      if (data.stdout) {
+        sections.push('', 'docker stdout:', data.stdout);
+      }
+      if (data.stderr) {
+        sections.push('', 'docker stderr:', data.stderr);
+      }
+
+      result.textContent = sections.join('\n');
+    });
+
+    syncSshFields();
+    syncSlackManifestPreview();
+
+    loadDefaults().catch(err => {
+      result.textContent = 'Failed to load defaults: ' + err.message;
+    });
+  </script>
+</body>
+</html>

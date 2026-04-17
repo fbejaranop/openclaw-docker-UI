@@ -1,0 +1,42 @@
+{
+  "env": ${ENV_CONFIG_JSON},
+  "agents": {
+    "defaults": {
+      "workspace": "/workspace",
+      "model": {
+        "primary": "${OPENCLAW_MODEL}"
+      },
+      "thinkingDefault": "${OPENCLAW_THINKING_DEFAULT}",
+      "timeoutSeconds": 1800
+    }
+  },
+  "gateway": {
+    "mode": "local",
+    "bind": "loopback",
+    "port": 18789,
+    "auth": {
+      "mode": "token",
+      "token": "${OPENCLAW_GATEWAY_TOKEN}"
+    },
+    "tailscale": {
+      "mode": "off",
+      "resetOnExit": false
+    }
+  },
+  "session": {
+    "dmScope": "per-channel-peer"
+  },
+  "tools": {
+    "profile": "coding"
+  },
+  "channels": {
+    "slack": ${SLACK_CONFIG_JSON}
+  },
+  "plugins": {
+    "entries": {
+      "openai": {
+        "enabled": true
+      }
+    }
+  }
+}
